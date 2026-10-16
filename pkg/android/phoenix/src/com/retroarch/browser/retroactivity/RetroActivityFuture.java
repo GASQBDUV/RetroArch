@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.WindowMetrics;
+import android.app.ActivityOptions;
 import android.content.Intent;
 import android.content.Context;
 import android.hardware.display.DisplayManager;
@@ -99,6 +100,55 @@ public final class RetroActivityFuture extends RetroActivityCamera {
 
     secondScreenDisplayManager = (DisplayManager) getSystemService(Context.DISPLAY_SERVICE);
     secondScreenDisplayManager.registerDisplayListener(secondScreenDisplayListener, null);
+    SecondScreenPanelActivity.game = new java.lang.ref.WeakReference<RetroActivityCommon>(this);
+    moveToSecondaryDisplayIfWanted();
+  }
+
+  // Swapped layout: the game on the secondary display, the map on the default
+  // one. GammaOS on the Anbernic RG DS / RG DS Plus reports the bottom (touch)
+  // panel as the default display, so without this the game lands on the
+  // bottom screen and the map on the top one, which has no touch. An empty
+  // no_swap_screens file in the app's external files dir keeps the old
+  // (AYN Thor) layout.
+  //
+  // Launchers and frontends start this activity directly, so it moves itself:
+  // starting an existing singleInstance task with another launch display
+  // reparents the task to that display (Android 10+). The current intent is
+  // reused, so onNewIntent sees the same content and only calls setIntent.
+  private boolean displayMovePending = false;
+
+  private void moveToSecondaryDisplayIfWanted() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+    if (getWindowManager().getDefaultDisplay().getDisplayId() != Display.DEFAULT_DISPLAY) return;
+    if (!SecondScreenPanelActivity.swapWanted(this)) return;
+    final Display target = SecondScreenPanelActivity.secondaryDisplay(this);
+    if (target == null) return;
+    displayMovePending = true;
+    mDecorView.post(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Intent intent = new Intent(getIntent());
+          intent.setClass(RetroActivityFuture.this, RetroActivityFuture.class);
+          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          ActivityOptions options = ActivityOptions.makeBasic();
+          options.setLaunchDisplayId(target.getDisplayId());
+          startActivity(intent, options.toBundle());
+          Log.i("RetroActivityFuture", "Moving game to display " + target.getDisplayId());
+        } catch (RuntimeException e) {
+          Log.w("RetroActivityFuture", "Move to display " + target.getDisplayId() + " refused", e);
+        }
+        // Whether or not the move happened, settle the second screen once it
+        // has had time to land (onWindowFocusChanged also re-checks).
+        mHandler.postDelayed(new Runnable() {
+          @Override
+          public void run() {
+            displayMovePending = false;
+            refreshSecondScreen();
+          }
+        }, 1500);
+      }
+    });
   }
 
   @Override
@@ -281,6 +331,10 @@ public final class RetroActivityFuture extends RetroActivityCamera {
     nativeForceSaveGame();
 
     dismissSecondScreen();
+    // Leaving the game closes the map panel too (onStart brings it back).
+    // The panel taking focus doesn't stop this activity: it is on another
+    // display and stays resumed.
+    closeSecondScreenPanel();
     super.onStop();
 
     // If QUITFOCUS parameter was set then completely exit RetroArch when focus is lost
@@ -291,13 +345,44 @@ public final class RetroActivityFuture extends RetroActivityCamera {
   public void onDestroy() {
     secondScreenDisplayManager.unregisterDisplayListener(secondScreenDisplayListener);
     dismissSecondScreen();
+    closeSecondScreenPanel();
     super.onDestroy();
     isRunning = false;
   }
 
+  // Re-evaluate after the game may have changed display: drop a Presentation
+  // that now sits on the game's own display, then show what fits.
+  private void refreshSecondScreen() {
+    if (isFinishing()) return;
+    int gameDisplayId = getWindowManager().getDefaultDisplay().getDisplayId();
+    if (secondScreen != null && secondScreen.getDisplay() != null
+        && (secondScreen.getDisplay().getDisplayId() == gameDisplayId
+            || gameDisplayId != Display.DEFAULT_DISPLAY)) {
+      dismissSecondScreen();
+    }
+    showSecondScreenIfPresent();
+  }
+
   private void showSecondScreenIfPresent() {
-    if (secondScreen != null) return;
+    if (displayMovePending) return;
     int mainDisplayId = getWindowManager().getDefaultDisplay().getDisplayId();
+    if (mainDisplayId != Display.DEFAULT_DISPLAY) {
+      // Game on the secondary display: the map goes on the default display,
+      // which only an activity can use (see SecondScreenPanelActivity).
+      if (SecondScreenPanelActivity.isRunning() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+      try {
+        Intent intent = new Intent(this, SecondScreenPanelActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+            | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        ActivityOptions options = ActivityOptions.makeBasic();
+        options.setLaunchDisplayId(Display.DEFAULT_DISPLAY);
+        startActivity(intent, options.toBundle());
+      } catch (RuntimeException e) {
+        Log.w("RetroActivityFuture", "Second screen panel launch refused", e);
+      }
+      return;
+    }
+    if (secondScreen != null) return;
     for (Display display : secondScreenDisplayManager.getDisplays()) {
       if (display.getDisplayId() == mainDisplayId) continue;
       secondScreen = new SuperMetroidSecondScreenPresentation(this, display, this);
@@ -318,11 +403,17 @@ public final class RetroActivityFuture extends RetroActivityCamera {
     }
   }
 
+  private void closeSecondScreenPanel() {
+    SecondScreenPanelActivity.finishIfRunning();
+  }
+
   @Override
   public void onWindowFocusChanged(boolean hasFocus) {
     super.onWindowFocusChanged(hasFocus);
 
     mHandlerSendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, hasFocus);
+
+    if (hasFocus) refreshSecondScreen();
 
     if (autoMouseGrab)
       inputGrabMouse(hasFocus);

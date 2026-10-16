@@ -1,0 +1,49 @@
+name: RG DS APK
+
+# Builds the MetroidArch (aarch64) APK for the RG DS fork. The upstream
+# RetroArch CI workflows were removed on this branch so a push doesn't start
+# dozens of unrelated platform builds.
+
+on:
+  push:
+    branches: [rgds]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Install SDK and NDK
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0" "ndk;29.0.14206865"
+
+      # Signed with a throwaway key kept in the repo so builds install over
+      # each other.
+      - name: Build APK
+        run: |
+          cd pkg/android/phoenix
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleAarch64Release \
+            -PRELEASE_STORE_FILE="$PWD/rgds.keystore" -PRELEASE_STORE_PASSWORD=android \
+            -PRELEASE_KEY_ALIAS=rgds -PRELEASE_KEY_PASSWORD=android
+          find build/outputs/apk -name '*.apk' -exec cp {} "$GITHUB_WORKSPACE/metroidarch-rgds.apk" \;
+          ls -la "$GITHUB_WORKSPACE/metroidarch-rgds.apk"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: rgds-build-${{ github.run_number }}
+          name: RG DS build ${{ github.run_number }}
+          files: metroidarch-rgds.apk

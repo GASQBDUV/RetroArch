@@ -11,6 +11,8 @@
     <uses-feature android:name="android.hardware.gamepad" android:required="false"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Dual screen: lets the map panel hand focus back to the game's task. -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Android 6-12 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -52,6 +54,14 @@
             </intent-filter>
         </activity-alias>
         <activity android:name="com.retroarch.browser.debug.CoreSideloadActivity" android:exported="true"/>
+        <!-- Map panel on the default display when the game runs on the
+             secondary one (see SecondScreenPanelActivity). -->
+        <activity android:name="com.retroarch.browser.retroactivity.SecondScreenPanelActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity="com.retroarch.secondscreen"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
         <receiver android:name="com.retroarch.browser.receiver.InstalledCoresReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="com.retroarch.QUERY_INSTALLED_CORES" />
