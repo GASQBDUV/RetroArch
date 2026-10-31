@@ -207,6 +207,14 @@ This wouldn't exist without a lot of other people's work:
   ([GitHub](https://github.com/ShadowOne333/Super-Metroid-Redux)), which this build also supports
   (see above).
 - My own separate project, [super_metroid-android](https://github.com/Raekwon1603/super_metroid-android), a from-scratch native Super Metroid engine port I built earlier - the whole second screen design (map, HP strip, items tab, markers, settings) is based directly on what I already built there, just ported over to work as a RetroArch companion screen instead.
+- bananaOS / Anbernic RG DS port: a rewrite of this second screen in C by GASQBDUV, built with Claude Code (see `bananaos/super-metroid`).
+
+## bananaOS / Anbernic RG DS
+
+There is also a version of the second screen for the **Anbernic RG DS** running **bananaOS**, where the bottom panel
+is the second screen and the stock RetroArch plays the game on the top one. It is a small C library, not part of the
+Android app. See [`bananaos/super-metroid`](bananaos/super-metroid) for what it does, which bananaOS version it was
+tested on and how to install it.
 
 ## The original RetroArch README
 
