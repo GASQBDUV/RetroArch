@@ -21,6 +21,15 @@ Nothing in RetroArch or in bananaOS is replaced. The companion is a small librar
 RetroArch with `LD_PRELOAD`. It is the same program as [`../super-metroid`](../super-metroid) with Zero Mission's
 memory map and art.
 
+
+## Screenshots
+
+Top panel: the game in RetroArch. Bottom panel: the second screen.
+
+![MAP tab: the explored area, Samus as a red dot and a Chozo statue hint](images/map.png)
+
+![ITEMS tab: item count, time and the equipment lists with the suit picture](images/items.png)
+
 ## Tested on
 
 | | |

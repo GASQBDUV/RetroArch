@@ -20,6 +20,15 @@ second screen, with the same tabs as the Android app:
 Nothing in RetroArch or in bananaOS is replaced. The companion is a small library that the launcher script loads
 into RetroArch with `LD_PRELOAD`.
 
+
+## Screenshots
+
+Top panel: the game in RetroArch. Bottom panel: the second screen.
+
+![MAP tab: the area map from the game's own art](images/map.png)
+
+![SETUP tab: status bar toggles, hide main HUD, clear map markers](images/setup.png)
+
 ## Tested on
 
 | | |

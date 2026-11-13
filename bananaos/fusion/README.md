@@ -23,6 +23,13 @@ Nothing in RetroArch or in bananaOS is replaced. The companion is a small librar
 RetroArch with `LD_PRELOAD`. It is the same program as [`../zero-mission`](../zero-mission) and
 [`../super-metroid`](../super-metroid) with Fusion's memory map and art.
 
+
+## Screenshots
+
+Top panel: the game in RetroArch. Bottom panel: the second screen.
+
+![MAP tab: the sector map with security levels, on the bottom panel of the RG DS](images/map.png)
+
 ## Tested on
 
 | | |
